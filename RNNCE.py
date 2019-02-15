@@ -25,6 +25,7 @@ class TextRNN(object):
         # Placeholders for input, output and dropout
         self.input_x = tf.placeholder(tf.int32, [None, sequence_length], name="input_x")
         self.input_y = tf.placeholder(tf.float32, [None, num_classes], name="input_y")
+        self.batch_size = tf.placeholder(tf.constant(None, dtype=tf.int32))
         # self.dropout_keep_prob = tf.placeholder(tf.float32, name="dropout_keep_prob")
 
         # Keeping track of l2 regularization loss (optional)
@@ -38,13 +39,13 @@ class TextRNN(object):
         with tf.name_scope("embedding"):
         #with tf.device('/cpu:0'), tf.name_scope("embedding"):
             W = tf.Variable(
-                tf.random_uniform([vocab_size, embedding_size], -1.0, 1.0),
+                tf.random_uniform([vocab_size, embedding_size], -1.0, 1.0, dtype=tf.float32),
                 name="W")
             self.embedded_chars = tf.nn.embedding_lookup(W, self.input_x)
             # self.embedded_chars_expanded = tf.expand_dims(self.embedded_chars, -1)
 
         with tf.name_scope("lstm"):
-            cell = tf.nn.rnn_cell.LSTMCell(embedding_size)
+            cell = tf.nn.rnn_cell.BasicLSTMCell(embedding_size)
 
             self.cell = cell
             self.initial_state = cell.zero_state(batch_size, tf.float32)
@@ -57,7 +58,8 @@ class TextRNN(object):
         with tf.name_scope("output"):
             outputs, self.last_state = tf.nn.dynamic_rnn(self.cell, self.embedded_chars,
                                                         initial_state=self.initial_state, dtype=tf.float32)
-            output = outputs[:, -1, :]
+            # output = outputs[:, -1, :]
+            output = tf.reshape(outputs, [-1, embedding_size])
 
             self.logits = tf.matmul(output, self.fc_W) + self.fc_b
             self.predictions = tf.argmax(self.logits, axis = 1, name="predictions")
